@@ -1,0 +1,95 @@
+import random
+
+# Step 1: Define problem (items and knapsack capacity)
+items = [
+    {"weight": 12, "value": 4},
+    {"weight": 2,  "value": 2},
+    {"weight": 1,  "value": 2},
+    {"weight": 1,  "value": 1},
+    {"weight": 4,  "value": 10}
+]
+capacity = 15
+n_items = len(items)
+
+# Step 2: Initialize GA parameters
+POP_SIZE = 20
+MUTATION_RATE = 0.1
+CROSSOVER_RATE = 0.8
+GENERATIONS = 50
+
+# Step 3: Initialize population (random binary sequences)
+def random_solution():
+    return [random.randint(0, 1) for _ in range(n_items)]
+
+population = [random_solution() for _ in range(POP_SIZE)]
+
+# Step 4: Gene Expression (decode sequence into weight & value)
+def decode(solution):
+    total_weight, total_value = 0, 0
+    for i, bit in enumerate(solution):
+        if bit == 1:
+            total_weight += items[i]["weight"]
+            total_value  += items[i]["value"]
+    return total_weight, total_value
+
+# Step 5: Fitness Function
+def fitness(solution):
+    weight, value = decode(solution)
+    if weight > capacity:
+        return 0  # penalize overweight solutions
+    return value
+
+# Step 6: Selection (tournament)
+def selection(pop):
+    i, j = random.sample(range(len(pop)), 2)
+    return pop[i] if fitness(pop[i]) > fitness(pop[j]) else pop[j]
+
+# Step 7: Crossover (single point)
+def crossover(p1, p2):
+    if random.random() < CROSSOVER_RATE:
+        point = random.randint(1, n_items - 1)
+        child1 = p1[:point] + p2[point:]
+        child2 = p2[:point] + p1[point:]
+        return child1, child2
+    return p1, p2
+
+# Step 8: Mutation
+def mutate(solution):
+    for i in range(n_items):
+        if random.random() < MUTATION_RATE:
+            solution[i] = 1 - solution[i]  # flip bit
+    return solution
+
+# Step 9: Evolution loop
+best_solution = None
+best_fitness = -1
+
+for gen in range(GENERATIONS):
+    new_population = []
+    
+    # Track best
+    for sol in population:
+        fit = fitness(sol)
+        if fit > best_fitness:
+            best_fitness = fit
+            best_solution = sol
+    
+    # Generate next population
+    while len(new_population) < POP_SIZE:
+        p1 = selection(population)
+        p2 = selection(population)
+        c1, c2 = crossover(p1, p2)
+        new_population.append(mutate(c1))
+        if len(new_population) < POP_SIZE:
+            new_population.append(mutate(c2))
+    
+    population = new_population
+    if gen % 10 == 0:
+        print(f"Generation {gen}: Best fitness = {best_fitness}")
+
+# Step 10: Output best solution
+w, v = decode(best_solution)
+print("\nBest solution found:")
+print("Items selected:", best_solution)
+print("Total weight:", w)
+print("Total value:", v)
