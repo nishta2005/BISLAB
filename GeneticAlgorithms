@@ -1,0 +1,72 @@
+import numpy as np
+import random
+
+# Step 1: Define the fitness function
+def fitness_function(x):
+    return x * np.sin(10 * np.pi * x) + 1
+
+# Step 2: Initialize GA parameters
+POPULATION_SIZE = 20
+MUTATION_RATE = 0.1
+CROSSOVER_RATE = 0.8
+GENERATIONS = 100
+
+# Step 3: Create initial population (random values between 0 and 1)
+population = np.random.rand(POPULATION_SIZE)
+
+# Function to evaluate population
+def evaluate_population(pop):
+    return [fitness_function(ind) for ind in pop]
+
+# Step 5: Selection (Tournament selection)
+def selection(pop, fitness):
+    i, j = random.sample(range(len(pop)), 2)
+    return pop[i] if fitness[i] > fitness[j] else pop[j]
+
+# Step 6: Crossover (blend crossover)
+def crossover(parent1, parent2):
+    if random.random() < CROSSOVER_RATE:
+        alpha = random.random()
+        child1 = alpha * parent1 + (1 - alpha) * parent2
+        child2 = alpha * parent2 + (1 - alpha) * parent1
+        return child1, child2
+    return parent1, parent2
+
+# Step 7: Mutation
+def mutate(ind):
+    if random.random() < MUTATION_RATE:
+        ind += np.random.normal(0, 0.1)  # small random change
+        ind = np.clip(ind, 0, 1)         # keep within [0,1]
+    return ind
+
+# Step 8: GA loop
+best_solution = None
+best_fitness = -float("inf")
+
+for gen in range(GENERATIONS):
+    fitness = evaluate_population(population)
+    new_population = []
+    
+    # Track best solution
+    for i, fit in enumerate(fitness):
+        if fit > best_fitness:
+            best_fitness = fit
+            best_solution = population[i]
+    
+    # Generate new population
+    while len(new_population) < POPULATION_SIZE:
+        parent1 = selection(population, fitness)
+        parent2 = selection(population, fitness)
+        child1, child2 = crossover(parent1, parent2)
+        new_population.append(mutate(child1))
+        if len(new_population) < POPULATION_SIZE:
+            new_population.append(mutate(child2))
+    
+    population = np.array(new_population)
+
+    if gen % 10 == 0:
+        print(f"Generation {gen}: Best fitness = {best_fitness:.4f}")
+
+# Step 9: Output the best solution
+print("\nBest solution found:")
+print(f"x = {best_solution:.4f}, f(x) = {best_fitness:.4f}")
