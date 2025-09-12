@@ -1,0 +1,66 @@
+import numpy as np
+import random
+
+# ----- Setup -----
+cities = np.random.rand(6, 2) * 100   # 6 random cities
+n = len(cities)
+
+# Distance matrix
+dist = np.sqrt(((cities[:, None] - cities[None, :])**2).sum(axis=2))
+eta = 1 / (dist + 1e-6)   # heuristic (1/distance)
+tau = np.ones((n, n))     # pheromone matrix
+
+# Parameters
+n_ants = 10
+alpha, beta = 1, 5
+rho = 0.5     # evaporation rate
+Q = 100
+iters = 5     # reduced iterations
+
+def tour_length(tour):
+    return sum(dist[tour[i], tour[i+1]] for i in range(n-1)) + dist[tour[-1], tour[0]]
+
+# ----- Main Loop -----
+best_tour, best_len = None, float('inf')
+
+for it in range(iters):
+    tours = []
+   
+    for _ in range(n_ants):
+        start = random.randrange(n)
+        tour = [start]
+        unvisited = set(range(n)) - {start}
+       
+        while unvisited:
+            i = tour[-1]
+            probs = [(j, (tau[i, j]**alpha) * (eta[i, j]**beta)) for j in unvisited]
+            total = sum(p for _, p in probs)
+            r, cum = random.random(), 0
+            for j, p in probs:
+                cum += p / total
+                if r <= cum:
+                    tour.append(j)
+                    unvisited.remove(j)
+                    break
+       
+        tours.append((tour, tour_length(tour)))
+   
+    # Update best
+    tours.sort(key=lambda x: x[1])
+    if tours[0][1] < best_len:
+        best_tour, best_len = tours[0]
+   
+    # Pheromone update
+    tau *= (1 - rho)
+    for tour, L in tours[:3]:   # top 3 ants reinforce
+        for i in range(n):
+            a, b = tour[i], tour[(i+1) % n]
+            tau[a, b] += Q / L
+            tau[b, a] += Q / L
+   
+    # Print result for this iteration
+    path = " -> ".join(str(c) for c in best_tour)
+    print(f"Iteration {it+1}: Best length = {best_len:.2f}, Path = {path}")
+
+print("\nFinal Best Tour:", best_tour)
+print("Final Best Length:", best_len)

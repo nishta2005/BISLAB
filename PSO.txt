@@ -1,0 +1,56 @@
+import random
+
+# Objective function (maximize f(x))
+def fitness(x):
+    return -x**2 + 5*x + 20
+
+# PSO parameters
+num_particles = 10
+max_iterations = 5   # run only 5 iterations for demonstration
+w = 0.5      # inertia weight
+c1 = 1.5     # cognitive factor
+c2 = 1.5     # social factor
+
+# Initialize particles
+particles = [random.uniform(-10, 10) for _ in range(num_particles)]  # positions
+velocities = [0.0 for _ in range(num_particles)]
+pbest = particles[:]  # personal best positions
+pbest_values = [fitness(x) for x in particles]
+gbest = pbest[pbest_values.index(max(pbest_values))]  # global best
+
+print("Initial Particles:", particles)
+print("Initial gbest =", gbest, "f(gbest) =", fitness(gbest))
+print("-"*60)
+
+# Run PSO
+for iteration in range(max_iterations):
+    for i in range(num_particles):
+        # Update velocity
+        r1, r2 = random.random(), random.random()
+        velocities[i] = (w*velocities[i]
+                         + c1*r1*(pbest[i] - particles[i])
+                         + c2*r2*(gbest - particles[i]))
+
+        # Update position
+        particles[i] += velocities[i]
+
+        # Evaluate new position
+        value = fitness(particles[i])
+
+        # Update personal best
+        if value > pbest_values[i]:
+            pbest[i] = particles[i]
+            pbest_values[i] = value
+
+    # Update global best
+    best_value = max(pbest_values)
+    if best_value > fitness(gbest):
+        gbest = pbest[pbest_values.index(best_value)]
+
+    # Print iteration summary
+    print(f"Iteration {iteration+1}: gbest = {gbest:.4f}, f(gbest) = {fitness(gbest):.4f}")
+
+print("-"*60)
+print("Final Solution:")
+print(f"Best position (x) = {gbest:.4f}")
+print(f"Best value f(x)   = {fitness(gbest):.4f}")
