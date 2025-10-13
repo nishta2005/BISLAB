@@ -1,0 +1,50 @@
+import numpy as np
+
+# Parameters
+N = 5               # Grid size (5x5 intersections)
+iterations = 10     # Number of PCA iterations
+alpha = 0.1         # Learning rate
+
+# Initialize traffic signal times randomly between 30–120 seconds
+x = np.random.uniform(30, 120, (N, N))
+
+# Function to compute average waiting time (simplified model)
+def waiting_time(signal_time):
+    # Assume waiting time decreases as signal time approaches optimal (75s)
+    return abs(signal_time - 75) + np.random.uniform(-2, 2)
+
+# Function to compute fitness (inverse of waiting time)
+def fitness(signal_time):
+    return 1 / (1 + waiting_time(signal_time))
+
+# PCA iteration loop
+for t in range(iterations):
+    f = np.vectorize(fitness)(x)
+    new_x = np.copy(x)
+    
+    for i in range(N):
+        for j in range(N):
+            # Get 3x3 neighborhood indices
+            i_min, i_max = max(0, i-1), min(N, i+2)
+            j_min, j_max = max(0, j-1), min(N, j+2)
+            neighbors = f[i_min:i_max, j_min:j_max]
+            
+            # Compute neighborhood average fitness
+            avg_fitness = np.mean(neighbors)
+            
+            # Update rule based on neighborhood influence
+            new_x[i, j] = x[i, j] + alpha * (avg_fitness - f[i, j])
+    
+    x = new_x  # update for next iteration
+
+# Final optimized grid and average metrics
+final_waiting_times = np.vectorize(waiting_time)(x)
+final_fitness = np.vectorize(fitness)(x)
+
+output = {
+    "Optimized Signal Times (seconds)": np.round(x, 2),
+    "Average Waiting Time": round(np.mean(final_waiting_times), 2),
+    "Average Fitness": round(np.mean(final_fitness), 4)
+}
+
+output
