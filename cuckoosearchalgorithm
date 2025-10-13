@@ -1,0 +1,102 @@
+# Cuckoo Search implementation (visible to user). This code defines the algorithm,
+# runs it on a sample test function (Sphere), prints progress, and plots convergence.
+# It follows the basic Yang & Deb (2009) cuckoo search method with Lévy flights.
+import numpy as np
+import math
+import matplotlib.pyplot as plt
+
+def levy_flight(beta, dim):
+    # Mantegna's algorithm for Lévy flights
+    sigma_u = (math.gamma(1 + beta) * math.sin(math.pi * beta / 2) /
+               (math.gamma((1 + beta) / 2) * beta * 2**((beta - 1) / 2)))**(1 / beta)
+    u = np.random.normal(0, sigma_u, size=dim)
+    v = np.random.normal(0, 1, size=dim)
+    step = u / (np.abs(v) ** (1 / beta))
+    return step
+
+def simple_bounds(sol, lb, ub):
+    return np.clip(sol, lb, ub)
+
+def cuckoo_search(obj_func, dim, lb, ub, n_nests=25, pa=0.25, alpha=0.01, beta=1.5, n_iter=500):
+    # Initialize nests randomly
+    nests = np.random.uniform(lb, ub, size=(n_nests, dim))
+    fitness = np.array([obj_func(nests[i]) for i in range(n_nests)])
+    best_idx = np.argmin(fitness)
+    best = nests[best_idx].copy()
+    best_fitness = fitness[best_idx]
+    history = [best_fitness]
+
+    for t in range(n_iter):
+        # Generate new solutions via Lévy flights (cuckoos)
+        for i in range(n_nests):
+            step = levy_flight(beta, dim)
+            # stepsize scaled by alpha and difference from best
+            stepsize = alpha * step * (nests[i] - best)
+            new_sol = nests[i] + stepsize * np.random.randn(dim)
+            new_sol = simple_bounds(new_sol, lb, ub)
+            new_fit = obj_func(new_sol)
+            # Greedy selection: replace if better
+            if new_fit < fitness[i]:
+                nests[i] = new_sol
+                fitness[i] = new_fit
+                if new_fit < best_fitness:
+                    best = new_sol.copy()
+                    best_fitness = new_fit
+
+        # Abandon a fraction pa of worse nests and create new ones
+        K = np.random.rand(n_nests) < pa
+        n_new = np.sum(K)
+        if n_new > 0:
+            # Replace by random solutions (or by mixing)
+            nests[K] = np.random.uniform(lb, ub, size=(n_new, dim))
+            fitness[K] = np.array([obj_func(nests[j]) for j in np.where(K)[0]])
+            # update best
+            cur_best_idx = np.argmin(fitness)
+            if fitness[cur_best_idx] < best_fitness:
+                best = nests[cur_best_idx].copy()
+                best_fitness = fitness[cur_best_idx]
+
+        history.append(best_fitness)
+
+    return best, best_fitness, history
+
+# Example objective functions
+def sphere(x):
+    return np.sum(x**2)
+
+def rastrigin(x):
+    A = 10
+    return A * len(x) + np.sum(x**2 - A * np.cos(2 * math.pi * x))
+
+# Run a demo on the Sphere function
+if __name__ == "__main__":
+    DIM = 10
+    LB = -5.12
+    UB = 5.12
+    np.random.seed(42)
+
+    best_sol, best_val, hist = cuckoo_search(
+        obj_func=sphere,
+        dim=DIM,
+        lb=LB,
+        ub=UB,
+        n_nests=40,
+        pa=0.25,
+        alpha=0.01,
+        beta=1.5,
+        n_iter=300
+    )
+
+    print("Cuckoo Search finished.")
+    print(f"Best value found: {best_val:.6e}")
+    print(f"Best solution (first 10 dims shown): {np.array2string(best_sol, precision=4, separator=', ') }")
+
+    # Plot convergence
+    plt.figure(figsize=(8,4))
+    plt.plot(hist)
+    plt.title("Convergence (Cuckoo Search on Sphere)")
+    plt.xlabel("Iteration")
+    plt.ylabel("Best fitness")
+    plt.yscale('log')
+    plt.grid(True)
+    plt.show()
