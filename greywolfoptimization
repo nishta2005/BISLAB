@@ -1,0 +1,94 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+def grey_wolf_optimizer(obj_func, dim, lb, ub, n_wolves=30, n_iter=500):
+    # Initialize alpha, beta, and delta wolves
+    wolves = np.random.uniform(lb, ub, (n_wolves, dim))
+    fitness = np.array([obj_func(w) for w in wolves])
+
+    alpha, beta, delta = np.zeros(dim), np.zeros(dim), np.zeros(dim)
+    alpha_score, beta_score, delta_score = float('inf'), float('inf'), float('inf')
+
+    convergence_curve = []
+
+    for t in range(n_iter):
+        # Update alpha, beta, delta
+        for i in range(n_wolves):
+            fit = fitness[i]
+            if fit < alpha_score:
+                delta_score, delta = beta_score, beta.copy()
+                beta_score, beta = alpha_score, alpha.copy()
+                alpha_score, alpha = fit, wolves[i].copy()
+            elif fit < beta_score:
+                delta_score, delta = beta_score, beta.copy()
+                beta_score, beta = fit, wolves[i].copy()
+            elif fit < delta_score:
+                delta_score, delta = fit, wolves[i].copy()
+
+        # Coefficient decreasing from 2 to 0
+        a = 2 - t * (2 / n_iter)
+
+        for i in range(n_wolves):
+            for j in range(dim):
+                r1, r2 = np.random.rand(), np.random.rand()
+                A1 = 2 * a * r1 - a
+                C1 = 2 * r2
+                D_alpha = abs(C1 * alpha[j] - wolves[i][j])
+                X1 = alpha[j] - A1 * D_alpha
+
+                r1, r2 = np.random.rand(), np.random.rand()
+                A2 = 2 * a * r1 - a
+                C2 = 2 * r2
+                D_beta = abs(C2 * beta[j] - wolves[i][j])
+                X2 = beta[j] - A2 * D_beta
+
+                r1, r2 = np.random.rand(), np.random.rand()
+                A3 = 2 * a * r1 - a
+                C3 = 2 * r2
+                D_delta = abs(C3 * delta[j] - wolves[i][j])
+                X3 = delta[j] - A3 * D_delta
+
+                wolves[i][j] = (X1 + X2 + X3) / 3
+
+            wolves[i] = np.clip(wolves[i], lb, ub)
+            fitness[i] = obj_func(wolves[i])
+
+        convergence_curve.append(alpha_score)
+
+    return alpha, alpha_score, convergence_curve
+
+# Objective functions
+def sphere(x):
+    return np.sum(x**2)
+
+def rastrigin(x):
+    A = 10
+    return A * len(x) + np.sum(x**2 - A * np.cos(2 * np.pi * x))
+
+# Run demo
+if __name__ == "__main__":
+    np.random.seed(42)
+    DIM = 10
+    LB, UB = -5.12, 5.12
+
+    best_pos, best_val, curve = grey_wolf_optimizer(
+        obj_func=sphere,
+        dim=DIM,
+        lb=LB,
+        ub=UB,
+        n_wolves=30,
+        n_iter=300
+    )
+
+    print("Grey Wolf Optimizer finished.")
+    print(f"Best value found: {best_val:.6e}")
+    print(f"Best solution (first 10 dims shown): {np.array2string(best_pos, precision=4, separator=', ')}")
+
+    plt.figure(figsize=(8,4))
+    plt.plot(curve)
+    plt.title("Convergence (Grey Wolf Optimizer on Sphere)")
+    plt.xlabel("Iteration")
+    plt.ylabel("Best fitness")
+    plt.yscale('log')
+    plt.grid(True)
+    plt.show()
